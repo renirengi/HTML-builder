@@ -10,12 +10,11 @@ fs.mkdir(wayCopy, { recursive: true }, (err) => {
   });
   makeCopy();
 
-fs.watch(way, "utf-8", function (event, trigger){
-    if (err) throw err;
-    else{
-        makeCopy();
+  fs.watch(way, 'utf-8', (filename) => {
+    if (filename) {
+      makeCopy();
     }
-});
+  });
 
 function makeCopy(){
 fs.readdir(way, { withFileTypes: true }, (err, files) => {
@@ -23,10 +22,8 @@ fs.readdir(way, { withFileTypes: true }, (err, files) => {
     files.forEach(function(file){
     let newWay=path.join(way, file.name);
     let copyNewWay=path.join(wayCopy,file.name);
-    //console.log(copyNewWay);
     fs.copyFile(newWay, copyNewWay, (err) => {
         if(err) throw err});
     });
 });
 }
-///console.log (way);
