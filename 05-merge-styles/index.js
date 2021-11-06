@@ -1,37 +1,30 @@
 const fs = require('fs').promises;
 const path = require('path');
 const way = path.join(__dirname, 'styles');
-const projectWay=path.join(__dirname, 'project-dist')
+const projectWay = path.join(__dirname, 'project-dist');
 
-fs.mkdir(projectWay, { recursive: true }, (err) => {
-    if (err) throw err;
-  });
+async function main() {
+  const ac = new AbortController();
+  const { signal } = ac;
+  const watcher = fs.watch(way, { signal });
 
-  fs.watch(way, 'utf-8', (filename) => {
-    if (filename) {
-      load();
-    }
-  });
+  await fs.mkdir(projectWay, { recursive: true });
+  await mergeStyles();
 
-async function load() {
+  for await (const event of watcher) {
+    await mergeStyles();
+  }
+
+}
+
+main();
+
+async function mergeStyles() {
   const files = await fs.readdir(way);
   const cssFiles = files.filter((fileName) => path.extname(fileName) === '.css');
   const cssFilesDataPromises = cssFiles.map((fileName) => fs.readFile(path.join(way, fileName), 'utf8'));
   const cssFilesData = await Promise.all(cssFilesDataPromises);
-  let content=cssFilesData.join('');
-  fileHandler(content);
-}
+  const content = cssFilesData.join('\n');
 
-load();
-
-function fileHandler(x){
-    fs.writeFile(
-        path.join(projectWay, 'bundle.css'),
-        x,
-        (err) => {
-            if (err) throw err;
-            
-        }
-    );
-    
+  return fs.writeFile(path.join(projectWay, 'bundle.css'), content);
 }

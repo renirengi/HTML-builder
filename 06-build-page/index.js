@@ -7,32 +7,59 @@ const wayProject = path.join(__dirname, 'project-dist');
 const assetsPath = path.join(__dirname, assetsFolderName);
 const way = path.join(__dirname, 'styles');
 
-copyFolder(assetsPath, path.join(__dirname, 'project-dist', assetsFolderName));
 
 
-async function load() {
+async function main() {
+  const ac = new AbortController();
+  const { signal } = ac;
+  const watcher = fs.watch(way, { signal });
+
+  await fs.mkdir(wayProject, { recursive: true });
+  await mergeStyles();
+
+  for await (const event of watcher) {
+    await mergeStyles();
+  }
+
+}
+
+main();
+
+async function mergeStyles() {
   const files = await fs.readdir(way);
   const cssFiles = files.filter((fileName) => path.extname(fileName) === '.css');
   const cssFilesDataPromises = cssFiles.map((fileName) => fs.readFile(path.join(way, fileName), 'utf8'));
   const cssFilesData = await Promise.all(cssFilesDataPromises);
-  let content=cssFilesData.join('');
-  fileHandler(content);
+  const content = cssFilesData.join('\n');
+
+  return fs.writeFile(path.join(wayProject, 'style.css'), content);
 }
 
-load();
+readTemplate();
 
-function fileHandler(x){
-    fs.writeFile(
-        path.join(wayProject, 'style.css'),
-        x,
-        (err) => {
-            if (err) throw err;
-            
-        }
-    );
-    
+async function readTemplate(){
+  const controller = new AbortController();
+  const { signal } = controller;
+  const promise= fs.readFile(path.join(__dirname, 'template.html'),'utf-8',{ signal });
+  controller.abort();
+
+  await promise;
+  let newStr='';
+  let buffer= ((await promise).match(/{{[a-z]+}}/mg)).forEach(elem=> newStr+=' ' +elem.slice(2,-2));
+  return newStr;
+} 
+
+readComponents();
+
+async function readComponents(){
+  const files = await fs.readdir(path.join(__dirname, 'components'));
+   for (const file of files){
+    let result=file.slice(0,-5)
+    return result;
+  }
 }
 
+copyFolder(assetsPath, path.join(__dirname, 'project-dist', assetsFolderName));
 
 async function copyFolder(folderPath, copyPath) {
   await fs.mkdir(copyPath, { recursive: true });
@@ -49,26 +76,3 @@ async function copyFolder(folderPath, copyPath) {
 }
   
 
-///const wayComponents=path.join(way, 'components');
-///console.log(wayComponents);
-
-/*Копирование папки assets*/
-  /*makeCopy();
-
-  fs.watch(way, 'utf-8', (filename) => {
-    if (filename) {
-      makeCopy();
-    }
-  });
-
-function makeCopy(){
-fs.readdir(way, { withFileTypes: true }, (err, files) => {
-    if(err) throw err;
-    files.forEach(function(file){
-    let newWay=path.join(way, file.name);
-    let copyNewWay=path.join(wayProject,file.name);
-    fs.copyFile(newWay, copyNewWay, (err) => {
-        if(err) throw err});
-    });
-});
-}*/
