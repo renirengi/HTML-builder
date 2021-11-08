@@ -11,27 +11,6 @@ main();
 
 async function main() {
   await generate();
-
-  const stylesWatcher = fs.watch(pathToStyles);
-
-  for await (const event of stylesWatcher) {
-    await generate();
-  }
-
-  const assetsWatcher = fs.watch(assetsPath);
-
-  for await (const event of assetsWatcher) {
-    await generate();
-  }
-
-  const templateWatcher = fs.watch(path.join(__dirname, 'template.html'));
-
-  for await (const event of templateWatcher) {
-    await generate();
-  }
-
-
-
 }
 
 async function generate() {
@@ -80,6 +59,6 @@ async function copyFolder(folderPath, copyPath) {
 }
 
 function getCmpTag(fileName) {
-  return {{${fileName.replace('.html', '')}}};
+  return `{{${fileName.replace('.html', '')}}}`;
 }
 

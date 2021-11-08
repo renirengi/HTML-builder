@@ -3,21 +3,12 @@ const path = require('path');
 const way = path.join(__dirname, 'styles');
 const projectWay = path.join(__dirname, 'project-dist');
 
-async function main() {
-  const ac = new AbortController();
-  const { signal } = ac;
-  const watcher = fs.watch(way, { signal });
+main();
 
+async function main() {
   await fs.mkdir(projectWay, { recursive: true });
   await mergeStyles();
-
-  for await (const event of watcher) {
-    await mergeStyles();
-  }
-
 }
-
-main();
 
 async function mergeStyles() {
   const files = await fs.readdir(way);
