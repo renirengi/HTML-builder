@@ -3,63 +3,67 @@ const path = require('path');
 
 const assetsFolderName = 'assets';
 
-const wayProject = path.join(__dirname, 'project-dist');
+const pathToProject = path.join(__dirname, 'project-dist');
 const assetsPath = path.join(__dirname, assetsFolderName);
-const way = path.join(__dirname, 'styles');
-
-
-
-async function main() {
-  const ac = new AbortController();
-  const { signal } = ac;
-  const watcher = fs.watch(way, { signal });
-
-  await fs.mkdir(wayProject, { recursive: true });
-  await mergeStyles();
-
-  for await (const event of watcher) {
-    await mergeStyles();
-  }
-
-}
+const pathToStyles = path.join(__dirname, 'styles');
 
 main();
 
-async function mergeStyles() {
-  const files = await fs.readdir(way);
+async function main() {
+  await generate();
+
+  const stylesWatcher = fs.watch(pathToStyles);
+
+  for await (const event of stylesWatcher) {
+    await generate();
+  }
+
+  const assetsWatcher = fs.watch(assetsPath);
+
+  for await (const event of assetsWatcher) {
+    await generate();
+  }
+
+  const templateWatcher = fs.watch(path.join(__dirname, 'template.html'));
+
+  for await (const event of templateWatcher) {
+    await generate();
+  }
+
+
+
+}
+
+async function generate() {
+  const htmlTemplate = await fs.readFile(path.join(__dirname, 'template.html'), 'utf-8');
+  const components = await readComponents();
+  const updatedHtmlTemplate = components.reduce((acc, cmp) => acc.replace(cmp.tag, cmp.template), htmlTemplate);
+
+  await fs.mkdir(pathToProject, { recursive: true });
+  await fs.writeFile(path.join(pathToProject, 'index.html'), updatedHtmlTemplate);
+  await mergeStyles(pathToStyles, pathToProject);
+  await copyFolder(assetsPath, path.join(__dirname, 'project-dist', assetsFolderName));
+}
+
+async function readComponents() {
+  const cmpPath = path.join(__dirname, 'components');
+  const cmpFiles = await fs.readdir(cmpPath);
+  const cmpTemplatesPromises = cmpFiles.map((fileName) => fs.readFile(path.join(cmpPath, fileName), 'utf-8'));
+  const cmpTemplates = await Promise.all(cmpTemplatesPromises);
+  const components = cmpFiles.map((fileName, i) => ({tag: getCmpTag(fileName), template: cmpTemplates[i]}));
+
+  return components;
+}
+
+async function mergeStyles(stylesPath, projectPath) {
+  const files = await fs.readdir(stylesPath);
   const cssFiles = files.filter((fileName) => path.extname(fileName) === '.css');
-  const cssFilesDataPromises = cssFiles.map((fileName) => fs.readFile(path.join(way, fileName), 'utf8'));
+  const cssFilesDataPromises = cssFiles.map((fileName) => fs.readFile(path.join(stylesPath, fileName), 'utf8'));
   const cssFilesData = await Promise.all(cssFilesDataPromises);
   const content = cssFilesData.join('\n');
 
-  return fs.writeFile(path.join(wayProject, 'style.css'), content);
+  return fs.writeFile(path.join(projectPath, 'style.css'), content);
 }
-
-readTemplate();
-
-async function readTemplate(){
-  const controller = new AbortController();
-  const { signal } = controller;
-  const promise= fs.readFile(path.join(__dirname, 'template.html'),'utf-8',{ signal });
-  controller.abort();
-
-  await promise;
-  let newStr='';
-  let buffer= ((await promise).match(/{{[a-z]+}}/mg)).forEach(elem=> newStr+=' ' +elem.slice(2,-2));
-  return newStr;
-} 
-
-readComponents();
-
-async function readComponents(){
-  const files = await fs.readdir(path.join(__dirname, 'components'));
-   for (const file of files){
-    let result=file.slice(0,-5)
-    return result;
-  }
-}
-
-copyFolder(assetsPath, path.join(__dirname, 'project-dist', assetsFolderName));
 
 async function copyFolder(folderPath, copyPath) {
   await fs.mkdir(copyPath, { recursive: true });
@@ -74,5 +78,8 @@ async function copyFolder(folderPath, copyPath) {
 
   return Promise.all(operationsPromises);
 }
-  
+
+function getCmpTag(fileName) {
+  return {{${fileName.replace('.html', '')}}};
+}
 
