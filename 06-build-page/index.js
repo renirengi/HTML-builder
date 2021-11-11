@@ -19,6 +19,7 @@ async function generate() {
   const updatedHtmlTemplate = components.reduce((acc, cmp) => acc.replace(cmp.tag, cmp.template), htmlTemplate);
 
   await fs.mkdir(pathToProject, { recursive: true });
+  await directoryCleanUp(pathToProject);
   await fs.writeFile(path.join(pathToProject, 'index.html'), updatedHtmlTemplate);
   await mergeStyles(pathToStyles, pathToProject);
   await copyFolder(assetsPath, path.join(__dirname, 'project-dist', assetsFolderName));
@@ -58,7 +59,13 @@ async function copyFolder(folderPath, copyPath) {
   return Promise.all(operationsPromises);
 }
 
+async function directoryCleanUp(directory) {
+  const files = await fs.readdir(directory);
+  const rmPromises = files.map((file) => fs.rm(path.join(directory, file), { recursive: true }));
+
+  return Promise.all(rmPromises);
+}
+
 function getCmpTag(fileName) {
   return `{{${fileName.replace('.html', '')}}}`;
 }
-
